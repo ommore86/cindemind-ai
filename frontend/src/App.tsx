@@ -15,10 +15,19 @@ export const App: React.FC = () => {
   const [explainMovieId, setExplainMovieId] = useState<number | null>(null);
 
   useEffect(() => {
-    // Check backend health dynamically using configured base URL
+    // Initial health check
     api.checkHealth()
       .then(setBackendHealthy)
       .catch(() => setBackendHealthy(false));
+
+    // Periodic check every 8 seconds to automatically re-connect when backend boots up
+    const interval = setInterval(() => {
+      api.checkHealth()
+        .then(setBackendHealthy)
+        .catch(() => setBackendHealthy(false));
+    }, 8000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleExplainMovie = (movieId: number) => {

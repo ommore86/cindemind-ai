@@ -50,6 +50,22 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     return await res.json();
   } catch (err: any) {
+    // If connection to localhost failed, attempt fallback to 127.0.0.1 (resolves Windows IPv6 ::1 issues)
+    if (url.includes('localhost:8000')) {
+      const fallbackUrl = url.replace('localhost:8000', '127.0.0.1:8000');
+      try {
+        const fallbackRes = await fetch(fallbackUrl, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+          }
+        });
+        if (fallbackRes.ok) {
+          return await fallbackRes.json();
+        }
+      } catch (_) {}
+    }
     console.error(`API Request failed for [${url}]:`, err);
     throw err;
   }
@@ -154,11 +170,30 @@ export const api = {
 
   // Health
   checkHealth: async (): Promise<boolean> => {
+    // 1. Check primary ROOT_BASE/health
     try {
       const res = await fetch(`${ROOT_BASE}/health`);
-      return res.ok;
-    } catch {
-      return false;
+      if (res.ok) return true;
+    } catch {}
+
+    // 2. Check API_BASE/health
+    try {
+      const res = await fetch(`${API_BASE}/health`);
+      if (res.ok) return true;
+    } catch {}
+
+    // 3. Fallback for local dev if bound to 127.0.0.1
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/health');
+        if (res.ok) return true;
+      } catch {}
+      try {
+        const res = await fetch('http://localhost:8000/health');
+        if (res.ok) return true;
+      } catch {}
     }
+
+    return false;
   }
 };
