@@ -49,6 +49,32 @@ class ContentBasedRecommender:
         self.is_fitted = True
         logger.info(f"TF-IDF matrix built with shape {self.tfidf_matrix.shape}.")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize fitted model state to dictionary for precomputed artifact caching."""
+        if not self.is_fitted:
+            raise ValueError("Cannot serialize an unfitted ContentBasedRecommender.")
+        return {
+            "version": "1.0.0",
+            "num_movies": len(self.movie_df) if self.movie_df is not None else 0,
+            "vectorizer": self.vectorizer,
+            "tfidf_matrix": self.tfidf_matrix,
+            "feature_names": self.feature_names,
+            "movie_df": self.movie_df,
+            "movie_id_to_idx": self.movie_id_to_idx,
+            "idx_to_movie_id": self.idx_to_movie_id
+        }
+
+    def load_from_dict(self, state: Dict[str, Any]):
+        """Hydrate model state from a precomputed artifact dictionary."""
+        self.vectorizer = state["vectorizer"]
+        self.tfidf_matrix = state["tfidf_matrix"]
+        self.feature_names = state["feature_names"]
+        self.movie_df = state["movie_df"]
+        self.movie_id_to_idx = state["movie_id_to_idx"]
+        self.idx_to_movie_id = state["idx_to_movie_id"]
+        self.is_fitted = True
+        logger.info(f"Loaded ContentBasedRecommender artifact with {len(self.movie_id_to_idx)} movies.")
+
     def get_similar_movies(
         self,
         movie_id: int,

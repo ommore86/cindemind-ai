@@ -43,6 +43,7 @@ ml_models/
 huggingface_cache/
 *.joblib
 *.pkl
+!data/processed/models/*.joblib
 
 # Local SQLite & Databases (ignore test/temp databases, but track pre-seeded cinemind.db)
 *.db

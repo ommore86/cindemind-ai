@@ -86,6 +86,39 @@ class CollaborativeRecommender:
         self.is_fitted = True
         logger.info(f"Collaborative filtering fitted: {n_users} users, {n_movies} movies, {actual_factors} latent factors.")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize fitted collaborative model state to dictionary for precomputed artifact caching."""
+        if not self.is_fitted:
+            raise ValueError("Cannot serialize an unfitted CollaborativeRecommender.")
+        return {
+            "version": "1.0.0",
+            "num_users": len(self.user_to_idx),
+            "num_movies": len(self.movie_to_idx),
+            "n_factors": self.n_factors,
+            "user_to_idx": self.user_to_idx,
+            "idx_to_user": self.idx_to_user,
+            "movie_to_idx": self.movie_to_idx,
+            "idx_to_movie": self.idx_to_movie,
+            "user_factors": self.user_factors,
+            "item_factors": self.item_factors,
+            "user_means": self.user_means,
+            "global_mean": self.global_mean
+        }
+
+    def load_from_dict(self, state: Dict[str, Any]):
+        """Hydrate collaborative model state from a precomputed artifact dictionary."""
+        self.n_factors = state.get("n_factors", self.n_factors)
+        self.user_to_idx = state["user_to_idx"]
+        self.idx_to_user = state["idx_to_user"]
+        self.movie_to_idx = state["movie_to_idx"]
+        self.idx_to_movie = state["idx_to_movie"]
+        self.user_factors = state["user_factors"]
+        self.item_factors = state["item_factors"]
+        self.user_means = state["user_means"]
+        self.global_mean = state["global_mean"]
+        self.is_fitted = True
+        logger.info(f"Loaded CollaborativeRecommender artifact with {len(self.user_to_idx)} users and {len(self.movie_to_idx)} movies.")
+
     def predict_rating(self, user_id: int, movie_id: int) -> Tuple[Optional[float], bool]:
         """
         Predict rating score for a (user, movie) pair.

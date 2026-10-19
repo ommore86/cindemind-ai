@@ -4,9 +4,8 @@ Pretrained Transformer-based sentiment classifier with batching, truncation, and
 """
 
 import logging
+import threading
 from typing import List, Dict, Any, Union
-import torch
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 
 logger = logging.getLogger("CineMind-SentimentClassifier")
 
@@ -17,9 +16,12 @@ class SentimentClassifier:
     """
     Singleton wrapper around Hugging Face sequence classification pipeline.
     Reuses model in memory and supports batch inference.
+    Lazily loads the transformer pipeline only on demand to prevent memory bloat on startup.
     """
     _instance = None
     _pipeline = None
+    _pipeline_loaded = False
+    _load_lock = threading.Lock()
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -27,22 +29,42 @@ class SentimentClassifier:
         return cls._instance
 
     def __init__(self, model_name: str = DEFAULT_MODEL_NAME, device: str = "cpu"):
-        if self._pipeline is None:
-            logger.info(f"Loading sentiment analysis model: {model_name} on {device}...")
+        self.model_name = model_name
+        self.device = device
+
+    def _ensure_pipeline(self):
+        """Lazily initialize the Hugging Face pipeline only when inference is actually requested."""
+        if self._pipeline_loaded:
+            return self._pipeline
+
+        with self._load_lock:
+            if self._pipeline_loaded:
+                return self._pipeline
+
             try:
-                device_id = 0 if device == "cuda" and torch.cuda.is_available() else -1
+                logger.info(f"Lazily loading sentiment analysis model: {self.model_name} on {self.device}...")
+                import torch
+                from transformers import pipeline
+
+                device_id = 0 if self.device == "cuda" and torch.cuda.is_available() else -1
                 self._pipeline = pipeline(
                     "sentiment-analysis",
-                    model=model_name,
+                    model=self.model_name,
                     device=device_id,
                     truncation=True,
                     max_length=512
                 )
-                self.model_name = model_name
                 logger.info("Sentiment analysis model loaded successfully.")
             except Exception as e:
-                logger.warning(f"Failed to load transformer model '{model_name}': {e}. Using rule-based fallback.")
+                logger.warning(
+                    f"Could not load transformer model '{self.model_name}': {e}. "
+                    "Using lexical rule-based sentiment fallback."
+                )
                 self._pipeline = None
+            finally:
+                self._pipeline_loaded = True
+
+        return self._pipeline
 
     def predict_one(self, text: str) -> Dict[str, Any]:
         """Classify a single review text with validation for empty/long strings."""
@@ -58,9 +80,10 @@ class SentimentClassifier:
         if len(clean_text) > 2000:
             clean_text = clean_text[:2000]
 
-        if self._pipeline:
+        pipe = self._ensure_pipeline()
+        if pipe:
             try:
-                res = self._pipeline(clean_text)[0]
+                res = pipe(clean_text)[0]
                 label = res["label"].upper() # POSITIVE or NEGATIVE
                 confidence = float(res["score"])
                 return {
@@ -100,9 +123,10 @@ class SentimentClassifier:
                 indices_to_predict.append(idx)
                 results.append({**rev})
 
-        if self._pipeline and texts:
+        pipe = self._ensure_pipeline()
+        if pipe and texts:
             try:
-                hf_outputs = self._pipeline(texts, batch_size=batch_size, truncation=True, max_length=512)
+                hf_outputs = pipe(texts, batch_size=batch_size, truncation=True, max_length=512)
                 for i, out in enumerate(hf_outputs):
                     orig_idx = indices_to_predict[i]
                     results[orig_idx]["predicted_sentiment"] = out["label"].upper()

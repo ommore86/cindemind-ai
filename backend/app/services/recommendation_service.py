@@ -55,8 +55,86 @@ class RecommendationService:
             if self.is_ready:
                 return
 
+            # 1. Attempt to reuse precomputed model artifacts from disk
+            import joblib
+            model_dir_candidates = [
+                os.path.join("data", "processed", "models"),
+                os.path.join("..", "data", "processed", "models"),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "processed", "models")),
+            ]
+            content_path = None
+            collab_path = None
+            for mdir in model_dir_candidates:
+                c_p = os.path.join(mdir, "content_model.joblib")
+                cl_p = os.path.join(mdir, "collab_model.joblib")
+                if os.path.exists(c_p) and os.path.exists(cl_p):
+                    content_path = c_p
+                    collab_path = cl_p
+                    break
+
+            # Validate artifact compatibility against database movie count
+            try:
+                db_movie_count = db.query(Movie.movie_id).count()
+            except Exception:
+                db_movie_count = 0
+
+            if content_path and collab_path:
+                try:
+                    logger.info(f"Validating precomputed recommendation artifacts from {os.path.dirname(content_path)}...")
+                    content_state = joblib.load(content_path)
+                    collab_state = joblib.load(collab_path)
+
+                    artifact_movies = content_state.get("num_movies", 0)
+                    is_compatible = (
+                        content_state.get("version") == "1.0.0" and
+                        collab_state.get("version") == "1.0.0" and
+                        (db_movie_count == 0 or artifact_movies == db_movie_count)
+                    )
+
+                    if is_compatible:
+                        self.content_rec.load_from_dict(content_state)
+                        self.collab_rec.load_from_dict(collab_state)
+
+                        # Load sentiment aggregates from DB if present
+                        try:
+                            sentiments_df = pd.read_sql_query(
+                                "SELECT movie_id, analyzed_reviews, positive_count, negative_count, positive_ratio, aggregate_sentiment_score, average_confidence FROM movie_sentiment_aggregates",
+                                db.bind
+                            )
+                            sentiment_dict = {
+                                int(row["movie_id"]): {
+                                    "movie_id": int(row["movie_id"]),
+                                    "analyzed_reviews": int(row["analyzed_reviews"]),
+                                    "positive_count": int(row["positive_count"]),
+                                    "negative_count": int(row["negative_count"]),
+                                    "positive_ratio": float(row["positive_ratio"]),
+                                    "aggregate_sentiment_score": float(row["aggregate_sentiment_score"]),
+                                    "average_confidence": float(row["average_confidence"]),
+                                    "sentiment_available": True
+                                }
+                                for _, row in sentiments_df.iterrows()
+                            }
+                        except Exception:
+                            sentiment_dict = {}
+
+                        self.hybrid_engine.set_sentiment_aggregates(sentiment_dict)
+                        self.is_ready = True
+                        logger.info(
+                            f"Recommendation models initialized from precomputed artifacts: "
+                            f"{artifact_movies} movies, {len(collab_state.get('user_to_idx', {}))} users. Zero training needed."
+                        )
+                        return
+                    else:
+                        logger.warning(
+                            f"Precomputed artifact mismatch (artifact movies: {artifact_movies}, db movies: {db_movie_count}). "
+                            "Retraining models from active database..."
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed loading model artifacts: {e}. Falling back to database fit.")
+
+            # 2. Fit models from database if artifacts are missing or incompatible
             logger.info("Initializing recommendation models from database...")
-            # 1. Fetch movies using optimized SQL query
+            # 2a. Fetch movies using optimized SQL query
             try:
                 movies_df = pd.read_sql_query(
                     "SELECT movie_id AS movieId, title, genres, year, overview, tags, avg_rating, rating_count, weighted_score, poster_url FROM movies",
@@ -96,7 +174,7 @@ class RecommendationService:
             ).str.strip()
             self.content_rec.fit(movies_df)
 
-            # 2. Fetch ratings using optimized SQL query
+            # 2b. Fetch ratings using optimized SQL query
             try:
                 ratings_df = pd.read_sql_query(
                     "SELECT user_id AS userId, movie_id AS movieId, rating FROM ratings",
@@ -109,7 +187,7 @@ class RecommendationService:
             if not ratings_df.empty:
                 self.collab_rec.fit(ratings_df)
 
-            # 3. Fetch sentiment aggregates
+            # 2c. Fetch sentiment aggregates
             try:
                 sentiments_df = pd.read_sql_query(
                     "SELECT movie_id, analyzed_reviews, positive_count, negative_count, positive_ratio, aggregate_sentiment_score, average_confidence FROM movie_sentiment_aggregates",
@@ -144,6 +222,16 @@ class RecommendationService:
                     for s in sentiments
                 }
             self.hybrid_engine.set_sentiment_aggregates(sentiment_dict)
+
+            # 2d. Cache precomputed artifacts to disk for future lightweight startups
+            try:
+                target_dir = model_dir_candidates[2] if os.path.exists(model_dir_candidates[2]) else model_dir_candidates[0]
+                os.makedirs(target_dir, exist_ok=True)
+                joblib.dump(self.content_rec.to_dict(), os.path.join(target_dir, "content_model.joblib"), compress=3)
+                joblib.dump(self.collab_rec.to_dict(), os.path.join(target_dir, "collab_model.joblib"), compress=3)
+                logger.info(f"Cached fitted recommendation model artifacts to {target_dir} for instant startup.")
+            except Exception as e:
+                logger.warning(f"Could not cache model artifacts: {e}")
 
             self.is_ready = True
             logger.info("Recommendation service initialized and ready.")
