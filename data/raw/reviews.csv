@@ -1,0 +1,56 @@
+movieId,reviewId,reviewText,groundTruthSentiment
+1,r101,A visual triumph and an emotionally resonant story about friendship and growing up.,positive
+1,r102,"Groundbreaking computer animation, witty humor for adults, and pure wonder for kids.",positive
+1,r103,One of Pixar's absolute finest masterpieces that redefined animated storytelling forever.,positive
+1,r104,"Occasionally predictable, but the charm and pacing make up for any minor flaws.",positive
+2,r201,"Robin Williams delivers boundless energy in a thrilling, creative fantasy adventure.",positive
+2,r202,A dark and chaotic family movie with fantastic practical and digital creatures.,positive
+2,r203,"A bit intense and frightening for very young children, and the CGI has dated somewhat.",negative
+3,r301,Matthau and Lemmon have unmatched comedic chemistry that keeps this sequel hilarious.,positive
+3,r302,Standard sitcom humor that relies heavily on recycled jokes from the first film.,negative
+4,r401,"Warm, heartfelt performances and a sensational soundtrack celebrating sisterhood.",positive
+4,r402,Uneven pacing and melodramatic subplots undermine strong lead performances.,negative
+5,r501,Steve Martin and Martin Short bring genuine heart and slapstick charm to this family sequel.,positive
+5,r502,Sentimental fluff that feels too contrived and lacks the novelty of the original.,negative
+6,r601,Michael Mann's magnum opus. Pacino and De Niro at the absolute pinnacle of crime drama.,positive
+6,r602,The downtown bank shootout is the greatest action sequence ever committed to film.,positive
+6,r603,"Superb cinematography, gripping atmosphere, and profound character studies on both sides.",positive
+7,r701,"Harrison Ford brings understated romance, though Audrey Hepburn's original remains unmatched.",positive
+7,r702,Lacks the genuine magic and wit of Billy Wilder's classic.,negative
+10,r1001,"Pierce Brosnan makes a swaggering Bond debut in a smart, high-octane Cold War sequel.",positive
+10,r1002,"Tremendous stunts, iconic villain in Sean Bean, and revitalized the 007 franchise.",positive
+10,r1003,Formulaic gadgets and somewhat clunky dialogue in the second act.,negative
+50,r5001,A labyrinthine neo-noir puzzle with one of cinema's all-time greatest twist endings.,positive
+50,r5002,"Brilliant ensemble cast, sharp dialogue, and unforgettable atmosphere.",positive
+110,r1101,Grand historical epic with ferocious battle scenes and an indelible emotional core.,positive
+110,r1102,"Historically inaccurate and overly melodramatic, though undeniably rousing.",negative
+110,r1103,James Horner's breathtaking score and Gibson's raw passion make it unforgettable.,positive
+296,r2961,Tarantino revolutionized modern cinema with electrifying non-linear narrative and razor-sharp dialogue.,positive
+296,r2962,"Cool, stylish, funny, and relentlessly entertaining from the first frame to the last.",positive
+296,r2963,Excessive violence and gratuitous dialogue won't appeal to all audiences.,negative
+318,r3181,"An immortal testament to hope, endurance, and human friendship. True perfection.",positive
+318,r3182,"Morgan Freeman and Tim Robbins give career-defining, deeply inspiring performances.",positive
+318,r3183,A timeless masterpiece that continues to move generations of film lovers.,positive
+356,r3561,"Tom Hanks is mesmerizing in a sweeping, sentimental journey through American history.",positive
+356,r3562,Heartwarming and wonderfully crafted with memorable quotes and stellar soundtrack.,positive
+356,r3563,"Borderline mawkish and overly nostalgic, but Hanks' sincerity saves it.",negative
+480,r4801,Spielberg crafts pure cinema magic. The dinosaur reveals still inspire genuine awe.,positive
+480,r4802,The gold standard of blockbuster filmmaking with unmatched suspense and sound design.,positive
+527,r5271,"A harrowing, deeply moral, and essential work of historical filmmaking by Spielberg.",positive
+527,r5272,Heartbreaking black-and-white cinematography and profoundly moving performances.,positive
+2571,r25711,A philosophical sci-fi triumph that completely redefined visual effects and action choreography.,positive
+2571,r25712,Cyberpunk perfection combining mind-bending concepts with jaw-dropping martial arts.,positive
+2571,r25713,"The sequels may have faltered, but the original stands as an unassailable classic.",positive
+2959,r29591,David Fincher delivers a blistering satire of consumer culture and masculinity.,positive
+2959,r29592,"Visually provocative, dark, darkly humorous, and structurally brilliant.",positive
+2959,r29593,Aggressive nihilism and abrasive violence make it polarizing for conventional viewers.,negative
+58559,r585591,Heath Ledger's Joker is an electrifying tour de force in this towering crime tragedy.,positive
+58559,r585592,Christopher Nolan elevated comic-book adaptations into high art and gripping philosophical debate.,positive
+58559,r585593,"Dark, cerebral, and relentlessly paced, an absolute pinnacle of modern cinema.",positive
+79132,r791321,An astonishing cinematic puzzle that balances complex dream layers with visceral heist thrills.,positive
+79132,r791322,Mind-bending original concept with Zimmer's colossal score and stunning practical effects.,positive
+109487,r1094871,"A transcendent, awe-inspiring space odyssey grounded by a father-daughter emotional anchor.",positive
+109487,r1094872,Visually mesmerizing and scientifically audacious with an organ-driven cosmic score.,positive
+109487,r1094873,"Slightly over-reliant on love as a physical force in the final act, yet deeply breathtaking.",positive
+201773,r2017731,"Bong Joon-ho crafts a razor-sharp, genre-shifting satire on class divide and survival.",positive
+201773,r2017732,"Every single frame is meticulously designed; gripping, darkly hilarious, and shocking.",positive

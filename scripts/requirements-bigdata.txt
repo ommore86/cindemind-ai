@@ -1,0 +1,4 @@
+# CineMind AI — Optional Apache Spark & Distributed ETL Dependencies
+-r ../requirements.txt
+pyspark>=3.5.0
+py4j>=0.10.9

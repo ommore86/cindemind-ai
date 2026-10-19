@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-10-19T09:46:27.067576Z",
+  "k_value": 10,
+  "sample_size_users": 50,
+  "test_ratings_evaluated": 19143,
+  "models": {
+    "content_based": {
+      "name": "Content-Based Filtering (TF-IDF + Cosine)",
+      "precision_at_k": 0.006,
+      "recall_at_k": 0.0027,
+      "ndcg_at_k": 0.0086,
+      "rmse": null,
+      "mae": null
+    },
+    "collaborative": {
+      "name": "Collaborative Filtering (Truncated SVD Matrix Factorization)",
+      "precision_at_k": 0.124,
+      "recall_at_k": 0.074,
+      "ndcg_at_k": 0.1646,
+      "rmse": 0.9003,
+      "mae": 0.6975
+    },
+    "hybrid": {
+      "name": "Hybrid Engine (Content + Collaborative + Sentiment)",
+      "precision_at_k": 0.098,
+      "recall_at_k": 0.076,
+      "ndcg_at_k": 0.1344,
+      "rmse": null,
+      "mae": null
+    }
+  },
+  "notes": [
+    "Evaluated using a 80/20 stratified user rating train/test split.",
+    "Relevant items defined as test ratings with rating >= 3.5.",
+    "RMSE and MAE are only applicable to Collaborative Filtering which directly predicts explicit star ratings.",
+    "Hybrid recommender balances personalization, catalog discovery, and positive sentiment evidence."
+  ]
+}

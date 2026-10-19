@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+.npm
+.vite/
+
+# Big Data & ML Cache
+*.spark/
+metastore_db/
+derby.log
+checkpoint/
+ml_models/
+huggingface_cache/
+*.joblib
+*.pkl
+
+# Local SQLite & Databases (ignore test/temp databases, but track pre-seeded cinemind.db)
+*.db
+*.sqlite
+*.sqlite3
+!cinemind.db
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Big datasets (exclude full raw downloads, keep samples)
+data/raw/*.zip
+data/raw/ml-latest/
+data/raw/ml-25m/

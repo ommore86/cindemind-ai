@@ -1,0 +1,23 @@
+{
+  "engine": "Vectorized Pandas (Local Fallback)",
+  "timestamp": "2026-10-19T09:54:21.804614Z",
+  "steps_completed": [
+    "load_raw_data",
+    "schema_validation",
+    "deduplication",
+    "tag_aggregation",
+    "user_stats_computation",
+    "bayesian_rating_computation",
+    "content_text_synthesis",
+    "export_clean_data"
+  ],
+  "metrics": {
+    "raw_movies": 9742,
+    "cleaned_movies": 9742,
+    "raw_ratings": 100836,
+    "cleaned_ratings": 100836,
+    "unique_users": 610,
+    "global_average_rating": 3.502,
+    "output_directory": "data/processed"
+  }
+}
