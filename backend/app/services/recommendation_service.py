@@ -6,6 +6,7 @@ and serving personalized hybrid and cold-start recommendations.
 
 import os
 import logging
+import threading
 from typing import List, Dict, Any, Optional
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -32,6 +33,7 @@ class RecommendationService:
         if getattr(self, "_initialized", False):
             return
 
+        self._lock = threading.Lock()
         self.content_rec = ContentBasedRecommender(max_features=5000)
         self.collab_rec = CollaborativeRecommender(n_factors=20)
         self.hybrid_engine = HybridRecommendationEngine(
@@ -45,60 +47,106 @@ class RecommendationService:
         self._initialized = True
 
     def initialize_models(self, db: Session):
-        """Load data from database or processed artifacts and fit models."""
+        """Load data from database and fit models with thread-safe locking."""
         if self.is_ready:
             return
 
-        logger.info("Initializing recommendation models from database...")
-        # 1. Fetch movies
-        movies = db.query(Movie).all()
-        if not movies:
-            logger.warning("No movies found in database to initialize models.")
-            return
+        with self._lock:
+            if self.is_ready:
+                return
 
-        movie_dicts = [
-            {
-                "movieId": m.movie_id,
-                "title": m.title,
-                "genres": m.genres,
-                "year": m.year,
-                "overview": m.overview or "",
-                "tags": m.tags or "",
-                "avg_rating": m.avg_rating,
-                "rating_count": m.rating_count,
-                "weighted_score": m.weighted_score,
-                "poster_url": m.poster_url or "",
-                "content_text": f"{m.title} {m.genres.replace('|', ' ')} {m.tags or ''} {m.overview or ''}".strip()
-            }
-            for m in movies
-        ]
-        movies_df = pd.DataFrame(movie_dicts)
-        self.content_rec.fit(movies_df)
+            logger.info("Initializing recommendation models from database...")
+            # 1. Fetch movies using optimized SQL query
+            try:
+                movies_df = pd.read_sql_query(
+                    "SELECT movie_id AS movieId, title, genres, year, overview, tags, avg_rating, rating_count, weighted_score, poster_url FROM movies",
+                    db.bind
+                )
+            except Exception as e:
+                logger.warning(f"Error querying movies with pandas: {e}, falling back to ORM")
+                movies = db.query(Movie).all()
+                if not movies:
+                    logger.warning("No movies found in database to initialize models.")
+                    return
+                movies_df = pd.DataFrame([
+                    {
+                        "movieId": m.movie_id,
+                        "title": m.title,
+                        "genres": m.genres,
+                        "year": m.year,
+                        "overview": m.overview or "",
+                        "tags": m.tags or "",
+                        "avg_rating": m.avg_rating,
+                        "rating_count": m.rating_count,
+                        "weighted_score": m.weighted_score,
+                        "poster_url": m.poster_url or ""
+                    }
+                    for m in movies
+                ])
 
-        # 2. Fetch ratings
-        ratings = db.query(Rating.user_id, Rating.movie_id, Rating.rating).all()
-        if ratings:
-            ratings_df = pd.DataFrame(ratings, columns=["userId", "movieId", "rating"])
-            self.collab_rec.fit(ratings_df)
+            if movies_df.empty:
+                logger.warning("No movies found in database to initialize models.")
+                return
 
-        # 3. Fetch sentiment aggregates
-        sentiments = db.query(MovieSentimentAggregate).all()
-        sentiment_dict = {}
-        for s in sentiments:
-            sentiment_dict[s.movie_id] = {
-                "movie_id": s.movie_id,
-                "analyzed_reviews": s.analyzed_reviews,
-                "positive_count": s.positive_count,
-                "negative_count": s.negative_count,
-                "positive_ratio": s.positive_ratio,
-                "aggregate_sentiment_score": s.aggregate_sentiment_score,
-                "average_confidence": s.average_confidence,
-                "sentiment_available": True
-            }
-        self.hybrid_engine.set_sentiment_aggregates(sentiment_dict)
+            movies_df["content_text"] = (
+                movies_df["title"].fillna("") + " " +
+                movies_df["genres"].fillna("").str.replace("|", " ", regex=False) + " " +
+                movies_df["tags"].fillna("") + " " +
+                movies_df["overview"].fillna("")
+            ).str.strip()
+            self.content_rec.fit(movies_df)
 
-        self.is_ready = True
-        logger.info("Recommendation service initialized and ready.")
+            # 2. Fetch ratings using optimized SQL query
+            try:
+                ratings_df = pd.read_sql_query(
+                    "SELECT user_id AS userId, movie_id AS movieId, rating FROM ratings",
+                    db.bind
+                )
+            except Exception:
+                ratings = db.query(Rating.user_id, Rating.movie_id, Rating.rating).all()
+                ratings_df = pd.DataFrame(ratings, columns=["userId", "movieId", "rating"]) if ratings else pd.DataFrame()
+
+            if not ratings_df.empty:
+                self.collab_rec.fit(ratings_df)
+
+            # 3. Fetch sentiment aggregates
+            try:
+                sentiments_df = pd.read_sql_query(
+                    "SELECT movie_id, analyzed_reviews, positive_count, negative_count, positive_ratio, aggregate_sentiment_score, average_confidence FROM movie_sentiment_aggregates",
+                    db.bind
+                )
+                sentiment_dict = {
+                    int(row["movie_id"]): {
+                        "movie_id": int(row["movie_id"]),
+                        "analyzed_reviews": int(row["analyzed_reviews"]),
+                        "positive_count": int(row["positive_count"]),
+                        "negative_count": int(row["negative_count"]),
+                        "positive_ratio": float(row["positive_ratio"]),
+                        "aggregate_sentiment_score": float(row["aggregate_sentiment_score"]),
+                        "average_confidence": float(row["average_confidence"]),
+                        "sentiment_available": True
+                    }
+                    for _, row in sentiments_df.iterrows()
+                }
+            except Exception:
+                sentiments = db.query(MovieSentimentAggregate).all()
+                sentiment_dict = {
+                    s.movie_id: {
+                        "movie_id": s.movie_id,
+                        "analyzed_reviews": s.analyzed_reviews,
+                        "positive_count": s.positive_count,
+                        "negative_count": s.negative_count,
+                        "positive_ratio": s.positive_ratio,
+                        "aggregate_sentiment_score": s.aggregate_sentiment_score,
+                        "average_confidence": s.average_confidence,
+                        "sentiment_available": True
+                    }
+                    for s in sentiments
+                }
+            self.hybrid_engine.set_sentiment_aggregates(sentiment_dict)
+
+            self.is_ready = True
+            logger.info("Recommendation service initialized and ready.")
 
     def get_recommendations_for_user(
         self,

@@ -20,21 +20,28 @@ logger = logging.getLogger("CineMind-API")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Ensure tables exist and pre-warm models
+    # Startup: Ensure tables exist
     logger.info("Starting up CineMind AI application...")
     init_db()
     
-    # Warm up recommendation and sentiment services in background
-    try:
-        db = SessionLocal()
-        from app.database.initialization import auto_seed_if_empty
-        auto_seed_if_empty(db)
-        rec_service = get_recommendation_service()
-        rec_service.initialize_models(db)
-        db.close()
-        logger.info("Recommendation service pre-warmed successfully.")
-    except Exception as e:
-        logger.warning(f"Could not pre-warm recommendation service: {e}")
+    # Warm up recommendation models in background thread
+    # This allows Uvicorn to immediately bind to $PORT and pass Render's port detection in <1s
+    import threading
+
+    def _background_warmup():
+        try:
+            logger.info("Background model warm-up started...")
+            db = SessionLocal()
+            from app.database.initialization import auto_seed_if_empty
+            auto_seed_if_empty(db)
+            rec_service = get_recommendation_service()
+            rec_service.initialize_models(db)
+            db.close()
+            logger.info("Recommendation service pre-warmed successfully in background.")
+        except Exception as e:
+            logger.warning(f"Could not pre-warm recommendation service in background: {e}")
+
+    threading.Thread(target=_background_warmup, daemon=True, name="CineMind-Warmup").start()
 
     yield
 

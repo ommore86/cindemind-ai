@@ -27,7 +27,7 @@ def auto_seed_if_empty(db):
     from app.database.models import Movie
     
     try:
-        if db.query(Movie).count() > 0:
+        if db.query(Movie.movie_id).first() is not None:
             return
             
         logger.info("Auto-seeding empty database from processed CSV artifacts...")
